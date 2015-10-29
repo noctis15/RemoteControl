@@ -8,13 +8,15 @@
         android:layout_width="match_parent"
         android:id="@+id/linearLayout1"
         android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:orientation="horizontal">
 
         <fragment
             class="com.remote.noctis.remotecontrol.DeviceListFragment"
             android:id="@+id/frag_list"
-            android:layout_width="match_parent"
-            android:layout_height="@dimen/list_height"></fragment>
+            android:layout_width="@dimen/list_height"
+            android:layout_height="match_parent">
+            <!-- Preview: layout=@layout/row_devices -->
+        </fragment>
 
         <fragment
             class="com.remote.noctis.remotecontrol.DeviceDetailFragment"
@@ -25,4 +27,3 @@
         </fragment>
     </LinearLayout>
 </LinearLayout>
-
