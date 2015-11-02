@@ -4,26 +4,25 @@
     android:layout_height="fill_parent"
     android:orientation="vertical">
 
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="New Button"
+        android:id="@+id/button1"
+        android:layout_gravity="center_horizontal" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="New Text"
+        android:id="@+id/textView1"
+        android:layout_gravity="center_horizontal" />
+
     <LinearLayout
         android:id="@+id/linearLayout1"
         android:layout_width="match_parent"
         android:layout_height="fill_parent"
         android:orientation="horizontal">
 
-        <fragment
-            android:id="@+id/frag_list"
-            class="com.remote.noctis.remotecontrol.DeviceListFragment"
-            android:layout_width="@dimen/list_width"
-            android:layout_height="match_parent">
-            <!-- Preview: layout=@layout/row_devices -->
-        </fragment>
-
-        <fragment
-            android:id="@+id/frag_detail"
-            class="com.remote.noctis.remotecontrol.DeviceDetailFragment"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
-            <!-- Preview: layout=@layout/device_detail -->
-        </fragment>
     </LinearLayout>
 </LinearLayout>

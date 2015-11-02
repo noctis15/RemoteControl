@@ -5,7 +5,7 @@
     <item
         android:id="@+id/atn_direct_enable"
         android:icon="@mipmap/ic_action_on_off"
-        android:title="@string/enable_p2p_button"
+        android:title="@string/enable_wifi_button"
         app:showAsAction="ifRoom|withText" />
 
     <item
