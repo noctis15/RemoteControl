@@ -5,6 +5,7 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -28,7 +29,11 @@ public class MainActivity extends Activity  {
     private BufferedInputStream bufferedInputStream;
     private OutputStream outputStream;
     private Button button;
+    private Button button2;
     private TextView text;
+    private EditText editText0;
+    private EditText editText1;
+    private EditText editText2;
 
     //server side
     private static ServerSocket serverSocket;
@@ -43,8 +48,11 @@ public class MainActivity extends Activity  {
         setContentView(R.layout.content_main);
 
         button = (Button) findViewById(R.id.button1);   //reference to the send button
+        button2 = (Button) findViewById(R.id.button2);  //reference to listening button
         text = (TextView) findViewById(R.id.textView1);   //reference to the text view
-
+        editText0 = (EditText) findViewById(R.id.editText0);  //reference to message
+        editText1 = (EditText) findViewById(R.id.editText1);  //reference to IP address
+        editText2 = (EditText) findViewById(R.id.editText2);  //reference to port number
 
         //Button press event listener
         button.setOnClickListener(new View.OnClickListener() {
@@ -56,16 +64,31 @@ public class MainActivity extends Activity  {
                     @Override
                     public void run() {
                         // TODO Auto-generated method stub
-                        try {
-                            Socket client = new Socket("192.168.0.12", 8187);
-                            DataOutputStream DOS = new DataOutputStream(client.getOutputStream());
-                            DOS.writeUTF("COSIK!!!!!!!!!!!!!");
-                            client.close();
-                        } catch (UnknownHostException e) {
-                            e.printStackTrace();
-                        } catch (IOException e) {
-                            // TODO Auto-generated catch block
-                            e.printStackTrace();
+                        if (editText0.getText().toString().isEmpty()) {
+                            showToast("Proszę wpisać wiadomość");
+                        } else {
+                            try {
+
+
+
+
+
+
+                                if (editText1.getText().toString().isEmpty() || editText2.getText().toString().isEmpty()) {
+                                    showToast("Proszę wpisać adres IP i/lub Port");
+                                } else {
+
+                                    Socket client = new Socket(editText1.getText().toString(), Integer.parseInt(editText2.getText().toString()));
+                                    DataOutputStream DOS = new DataOutputStream(client.getOutputStream());
+                                    DOS.writeUTF(editText0.getText().toString());
+                                    client.close();
+                                }
+                            } catch (UnknownHostException e) {
+                                e.printStackTrace();
+                            } catch (IOException e) {
+                                // TODO Auto-generated catch block
+                                e.printStackTrace();
+                            }
                         }
                     }
                 }).start();
@@ -74,48 +97,57 @@ public class MainActivity extends Activity  {
             }
         });
 
-        Thread thread = new Thread() {
-            @Override
-            public void run() {
-                try {
-                    serverSocket = new ServerSocket(8187); // Server socket
+        button2.setOnClickListener(new View.OnClickListener() {
 
-                } catch (IOException e) {
-                    System.out.println("Could not listen on port: 8187");
+            public void onClick(View v) {
+                if (editText2.getText().toString().isEmpty()) {
+                    showToast("prosze wpisac numer Portu");
                 }
+                else{
+                    Thread thread = new Thread() {
+                        @Override
+                        public void run() {
+                            try {
+                                serverSocket = new ServerSocket(8187); // Server socket
 
-                System.out.println("Server started. Listening to the port 88187");
+                            } catch (IOException e) {
+                                System.out.println("Could not listen on port: " + editText2.getText().toString());
+                            }
 
-                while (true) {
-                    try {
+                            System.out.println("Server started. Listening to the port " + editText2.getText().toString());
 
-                        clientSocket = serverSocket.accept(); // accept the client
-                        // connection
-                        inputStreamReader = new InputStreamReader(clientSocket.getInputStream());
-                        bufferedReader = new BufferedReader(inputStreamReader); // get
-                        // client
-                        // msg
-                        message = bufferedReader.readLine();
+                            while (true) {
+                                try {
 
-                        System.out.println(message);
+                                    clientSocket = serverSocket.accept(); // accept the client
+                                    // connection
+                                    inputStreamReader = new InputStreamReader(clientSocket.getInputStream());
+                                    bufferedReader = new BufferedReader(inputStreamReader); // get
+                                    // client
+                                    // msg
+                                    message = bufferedReader.readLine();
 
-                        showToast(message);
-                        //Toast.makeText(getApplicationContext(), message, Toast.LENGTH_LONG).show();
+                                    System.out.println(message);
 
-                        inputStreamReader.close();
-                        clientSocket.close();
+                                    showToast(message);
+                                    //Toast.makeText(getApplicationContext(), message, Toast.LENGTH_LONG).show();
 
-                    } catch (IOException ex) {
-                        System.out.println("Problem in message reading");
-                    }
+                                    inputStreamReader.close();
+                                    clientSocket.close();
+
+                                } catch (IOException ex) {
+                                    System.out.println("Problem in message reading");
+                                }
+                            }
+
+                        }
+                    };
+
+                    thread.start();
+
                 }
-
             }
-        };
-
-        thread.start();
-
-
+        });
 
     }
 
@@ -124,7 +156,7 @@ public class MainActivity extends Activity  {
         runOnUiThread(new Runnable() {
             public void run()
             {
-                Toast.makeText(MainActivity.this, toast, Toast.LENGTH_LONG).show();
+                Toast.makeText(MainActivity.this, toast, Toast.LENGTH_SHORT).show();
             }
         });
     }
