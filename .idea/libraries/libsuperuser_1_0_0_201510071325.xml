@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="libsuperuser-1.0.0.201510071325">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/app/build/intermediates/exploded-aar/eu.chainfire/libsuperuser/1.0.0.201510071325/jars/classes.jar!/" />
+      <root url="file://$PROJECT_DIR$/app/build/intermediates/exploded-aar/eu.chainfire/libsuperuser/1.0.0.201510071325/res" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/eu.chainfire/libsuperuser/1.0.0.201510071325/88e06eec33a6c51461c9b54bfbbfad8d0b13045e/libsuperuser-1.0.0.201510071325-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
