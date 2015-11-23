@@ -27,12 +27,14 @@ public class MainStarter {
     public void start() {
 //        Shell.SU.run(String.format(COMMAND, getApkLocation()));
         try {
-            Log.d(TAG, "===EXECUTING===" + String.format(COMMAND, getApkLocation()));
-            Process process = Runtime.getRuntime().exec("su");
+            Log.d(TAG, "===EXECUTING=== " + String.format(COMMAND, getApkLocation()));
+            Process process = Runtime.getRuntime().exec("sh");
             DataOutputStream outputStream = new DataOutputStream(process.getOutputStream());
             outputStream.writeBytes(String.format(COMMAND, getApkLocation()));
             outputStream.flush();
+            Log.d(TAG, "Starting Waiting for process");
             process.waitFor();
+
         } catch (IOException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {

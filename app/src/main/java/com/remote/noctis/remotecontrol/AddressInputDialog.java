@@ -49,7 +49,7 @@ public class AddressInputDialog extends DialogFragment {
 
                         String address = addressInput.getText().toString();
                         String port = portInput.getText().toString();
-                        if (!address.equals("")) {
+                        if (!address.equals("") && !port.equals("")) {
                             Intent startIntent = new Intent(getActivity(), ClientActivity.class);
                             startIntent.putExtra(KEY_ADDRESS_EXTRA, address);
                             startIntent.putExtra(KEY_PORT_EXTRA, port);

@@ -12,6 +12,9 @@ import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -31,7 +34,7 @@ import java.net.UnknownHostException;
 
 import eu.chainfire.libsuperuser.Shell;
 
-public class MainActivity extends Activity  {
+public class MainActivity extends Activity {
     //client side
     private Socket client;
     private FileInputStream fileInputStream;
@@ -39,8 +42,7 @@ public class MainActivity extends Activity  {
     private OutputStream outputStream;
     private Button startClient;
     private Button startServer;
-    private TextView text;
-    private EditText editText0;
+    private TextView ip_address;
 
     //server side
     private static ServerSocket serverSocket;
@@ -70,14 +72,39 @@ public class MainActivity extends Activity  {
 
         startClient = (Button) findViewById(R.id.button1);   //reference to start Client
         startServer = (Button) findViewById(R.id.button2);  //reference to start server
-        text = (TextView) findViewById(R.id.textView1);   //reference to the text view
-        editText0 = (EditText) findViewById(R.id.editText0);  //reference to message
+        ip_address = (TextView) findViewById(R.id.ip_address); //reference to ip address textview
 
+        prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        hasSystemPrivileges = prefs.getBoolean(KEY_SYSTEM_PRIVILEGE_PREF, false);
+
+        ip_address.setText("Adres IP tego urządzenia: "+Utils.getIPAddress(true));
+
+        if (savedInstanceState == null) {
+            new AsyncTask<Void, Void, Void>() {
+                @Override
+                protected Void doInBackground(Void... voids) {
+                    final boolean isRooted = Shell.SU.available();
+                    //final boolean isRooted = true;
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (isRooted) {
+                                Toast.makeText(MainActivity.this, "Device is rooted", Toast.LENGTH_SHORT).show();
+                            } else {
+                                Toast.makeText(MainActivity.this, "Device us unrooted! You won't be able to use" +
+                                        "this device as a server", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    });
+                    return null;
+                }
+            }.execute();
+        }
 
         //Button press event listener
         startClient.setOnClickListener(new View.OnClickListener() {
 
-            public void onClick(View v) {
+            public void onClick(View v) { //client button
 
                 new Thread(new Runnable() {
 
@@ -122,12 +149,13 @@ public class MainActivity extends Activity  {
 
         startServer.setOnClickListener(new View.OnClickListener() {
 
-            public void onClick(View v) {
+            public void onClick(View v) { //server button
 
 
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
                     new StartServerServiceDialog().show(getFragmentManager(), "Start service");
                 } else {
+                    new PortInputDialog().show(getFragmentManager(), "Address Dialog");
                     //startScreenCapture();
                 }
                 /*if (editText2.getText().toString().isEmpty()) {
@@ -212,6 +240,7 @@ public class MainActivity extends Activity  {
             return builder.create();
         }
     }
+
     @SuppressLint("ValidFragment")
     private class InstallDialog extends DialogFragment {
         @Override
@@ -224,7 +253,7 @@ public class MainActivity extends Activity  {
                 public void onClick(DialogInterface dialogInterface, int i) {
                     new AsyncTask<Void, Void, Void>() {
                         @Override
-                        protected Void doInBackground(Void... voids){
+                        protected Void doInBackground(Void... voids) {
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
@@ -236,7 +265,7 @@ public class MainActivity extends Activity  {
                             editor.putBoolean(KEY_SYSTEM_PRIVILEGE_PREF, true);
                             editor.commit();
                             Shell.SU.run(String.format(INSTALL_SCRIPT,
-                                    new String[] {
+                                    new String[]{
                                             MainActivity.this.getPackageCodePath(),
                                             MainActivity.this.getPackageName()
                                     }));
@@ -257,14 +286,32 @@ public class MainActivity extends Activity  {
         }
     }
 
-    public void showToast(final String toast)
-    {
+    public void showToast(final String toast) {
         runOnUiThread(new Runnable() {
-            public void run()
-            {
+            public void run() {
                 Toast.makeText(MainActivity.this, toast, Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+        if (id == R.id.action_install) {
+            InstallDialog installDialog = new InstallDialog();
+            installDialog.show(getFragmentManager(), "INSTALL_DIALOG");
+        }
+        return super.onOptionsItemSelected(item);
     }
 
 
