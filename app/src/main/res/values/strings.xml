@@ -16,4 +16,7 @@
     <string name="label_me">ME</string>
     <string name="label_peers">PEERS</string>
     <string name="enable_wifi_button">Wifi Options</string>
+    <string name="requirements_hint">Hint: You need ROOT permission to start server on this device and Android 4.0 to 4.4</string>
+    <string name="instruction_hint">To exit client session please hold the back key for a short period of time.</string>
+    <string name="keys_hint">Application must be installed on system partition in order to control use physical buttons (back,menu) and touch events. To do this click menu button and select "Install to /system.</string>
 </resources>

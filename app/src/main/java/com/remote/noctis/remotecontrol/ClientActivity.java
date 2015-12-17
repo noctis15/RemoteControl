@@ -8,10 +8,12 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.RectF;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -27,6 +29,7 @@ import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
@@ -42,7 +45,7 @@ import java.nio.charset.StandardCharsets;
  * Created by Noctis on 2015-11-13.
  */
 @SuppressLint("NewView")
-public class ClientActivity extends Activity implements  View.OnTouchListener{ //SurfaceHolder.Callback, View.OnTouchListener {
+public class ClientActivity extends Activity implements View.OnTouchListener {
     private static final String TAG = "noctis";
 
     private SurfaceView surfaceView;
@@ -55,7 +58,7 @@ public class ClientActivity extends Activity implements  View.OnTouchListener{ /
     String address;
     String port;
 
-    private boolean locker=true;
+    private boolean locker = true;
 
 
     byte[] bytearray = new byte[1024];
@@ -67,15 +70,16 @@ public class ClientActivity extends Activity implements  View.OnTouchListener{ /
 
     private static Socket client = null;
     private static Socket touchSocket = null;
+    private static Socket keySocket = null;
     private static ObjectInputStream ois = null;
-    private static InputStream in = null;
-    private static OutputStream out = null;
-    Canvas canvas;
-    private static boolean started=false;
+    private static boolean started = false;
 
     Bitmap mutableBitmap;
     Thread t;
     Thread connection;
+    Thread touchConnection;
+    Thread keyConnection;
+    Thread exitThread;
     private static boolean running;
 
     @Override
@@ -89,10 +93,10 @@ public class ClientActivity extends Activity implements  View.OnTouchListener{ /
         setContentView(R.layout.activity_client);
         surfaceView = (SurfaceView) findViewById(R.id.client_surface_view);
         holder = surfaceView.getHolder();
-        //surfaceView.getHolder().addCallback(this);
         surfaceView.setOnTouchListener(this);
 
         running = true;
+        started = false;
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         getWindowManager().getDefaultDisplay().getMetrics(dm);
@@ -107,13 +111,15 @@ public class ClientActivity extends Activity implements  View.OnTouchListener{ /
                         Intent startIntent = new Intent(ClientActivity.this, MainActivity.class);
 
                         startActivity(startIntent);
+                        //finish();
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-            }}).start();
+            }
+        }).start();
 
-       connection =  new Thread(new Runnable() {
+        connection = new Thread(new Runnable() {
 
             @Override
             public void run() {
@@ -124,14 +130,13 @@ public class ClientActivity extends Activity implements  View.OnTouchListener{ /
 
 
                     while (running) {
-                        if(!InetAddress.getByName(address).isReachable(2000)){
+                        if (!InetAddress.getByName(address).isReachable(2000)) {
                             Intent startIntent = new Intent(ClientActivity.this, MainActivity.class);
 
                             startActivity(startIntent);
                         }
                         ByteArrayOutputStream out = new ByteArrayOutputStream();
                         int size = ois.readInt();
-                        //System.out.println(size);
                         byte[] data = new byte[size];
                         int length = 0;
                         int nreceived = 0;
@@ -150,30 +155,46 @@ public class ClientActivity extends Activity implements  View.OnTouchListener{ /
                         out.close();
 
                         Bitmap screen = BitmapFactory.decodeByteArray(bytePicture, 0, bytePicture.length);
-                        screen.compress(Bitmap.CompressFormat.JPEG, 100, out);
-                        mutableBitmap = screen.copy(Bitmap.Config.ARGB_8888, true);
+                        screen.compress(Bitmap.CompressFormat.PNG, 100, out);
 
-                        //canvas = new Canvas(screen);
-                        /*thread = new Thread(this);
-                        thread.start();*/
-                        //runSurface(mutableBitmap);
-                        if(!started){
-                        t.start();
-                        started=true;}
-                        t.join(100);
+                        DisplayMetrics metrics = new DisplayMetrics();
+                        getWindowManager().getDefaultDisplay().getMetrics(metrics);
+
+                        int width = screen.getWidth();
+                        int height = screen.getHeight();
+
+                        float scaleWidth = ((float) metrics.widthPixels) / width;
+                        float scaleHeight = ((float) metrics.heightPixels) / height;
 
 
+                        // create a matrix for the manipulation
+                        Matrix matrix = new Matrix();
+                        // resize the bit map
+                        matrix.postScale(scaleWidth, scaleHeight);
+
+                        // recreate the new Bitmap
+                        Bitmap resizedScreen = Bitmap.createBitmap(screen, 0, 0, width, height, matrix, false);
+
+                        mutableBitmap = resizedScreen.copy(Bitmap.Config.ARGB_8888, true);
+
+
+                        if (!started) {
+                            t.start();
+                            started = true;
+                        }
+                        //t.join(100);
 
 
                     }
-                } catch (ConnectException e){
-                    showToast("Could't connect wiht server");
-                    Intent startIntent = new Intent(ClientActivity.this, MainActivity.class);
-                    startActivity(startIntent);
+                } catch (ConnectException e) {
+                    showToast("Could't connect with server");
+                    finish();
+                    e.printStackTrace();
+                } catch (EOFException e) {
+                    showToast("Server has disconnected");
+                    finish();
                     e.printStackTrace();
                 } catch (IOException e) {
-                    e.printStackTrace();
-                } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
             }
@@ -181,17 +202,73 @@ public class ClientActivity extends Activity implements  View.OnTouchListener{ /
 
         connection.start();
 
-        /*try {
 
-            run();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }*/
+        touchConnection = new Thread(new Runnable() {
+
+            @Override
+            public void run() {
+                try {
+                    touchSocket = new Socket(address, Integer.parseInt(port) + 1);
+                } catch (ConnectException e) {
+                    showToast("Could't connect with touch server");
+                    finish();
+                    e.printStackTrace();
+                } catch (EOFException e) {
+                    showToast("Touch Server has disconnected");
+                    finish();
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                runOnUiThread(new Runnable() {
+
+
+                    @Override
+                    public void run() {
+
+                    }
+                });
+            }
+        });
+
+        touchConnection.start();
+
+
+        keyConnection = new Thread(new Runnable() {
+
+            @Override
+            public void run() {
+                try {
+                    keySocket = new Socket(address, Integer.parseInt(port) + 2);
+                } catch (ConnectException e) {
+                    showToast("Could't connect with key server");
+                    finish();
+                    e.printStackTrace();
+                } catch (EOFException e) {
+                    showToast("Key Server has disconnected");
+                    finish();
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                runOnUiThread(new Runnable() {
+
+
+                    @Override
+                    public void run() {
+
+                    }
+                });
+            }
+        });
+        keyConnection.start();
 
         t = new Thread(new Runnable() {
             public void run() {
-                while(locker && running){
-                    if(!holder.getSurface().isValid()){
+                while (locker && running) {
+                    if (!holder.getSurface().isValid()) {
                         continue;
                     }
                     Canvas canvas = holder.lockCanvas(); //Starting to edit pixels on the surface
@@ -203,15 +280,31 @@ public class ClientActivity extends Activity implements  View.OnTouchListener{ /
             }
         });
 
+        exitThread = new Thread(new Runnable() {
+            public void run() {
+                if (keySocket != null) {
+                    try {
+                        DataOutputStream DOS = new DataOutputStream(keySocket.getOutputStream());
+                        DOS.writeUTF(Integer.toString(15001900));
+                        System.out.println("ExitCode Sended: " + 15001900);
+                    } catch (IOException e) {
+                        e.printStackTrace();
 
+
+                    }
+                } else {
+                    Log.e(TAG, "Can't send ExitCode. Socket is null.");
+                }
+            }
+        });
 
 
     }
 
 
     public void runSurface(Bitmap bitmap) {
-        while(locker && running){
-            if(!holder.getSurface().isValid()){
+        while (locker && running) {
+            if (!holder.getSurface().isValid()) {
                 continue;
             }
             Canvas canvas = holder.lockCanvas(); //Starting to edit pixels on the surface
@@ -224,78 +317,23 @@ public class ClientActivity extends Activity implements  View.OnTouchListener{ /
 
     private void draw(Canvas canvas, Bitmap bitmap) {
         int border = 20;
-        RectF r = new RectF(border, border, canvas.getWidth()-20, canvas.getHeight()-20);
+        RectF r = new RectF(border, border, canvas.getWidth() - 20, canvas.getHeight() - 20);
         Paint paint = new Paint();
         paint.setARGB(200, 135, 135, 135); //paint color GRAY+SEMY TRANSPARENT
-        canvas.drawRect(r , paint );
+        canvas.drawRect(r, paint);
 
-        canvas.drawBitmap(bitmap,0,0,null);
-
-    }
-
-    /*private void run() throws IOException {
-        while (true) {
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            int size = ois.readInt();
-            System.out.println(size);
-            byte[] data = new byte[size];
-            int length = 0;
-            int nreceived = 0;
-
-            while ((length = ois.read(data, 0, size)) != -1) {
-                out.write(data, 0, length);
-                out.flush();
-                nreceived += length;
-                if (nreceived == size) {
-                    break;
-                }
-            }
-            byte[] bytePicture = out.toByteArray();
-            out.close();
-
-            Bitmap screen = BitmapFactory.decodeByteArray(bytePicture, 0, bytePicture.length);
-            screen.compress(Bitmap.CompressFormat.PNG, 100, out);
-
-
-        }
-    }*/
-
-
-    /*@Override
-    public void surfaceCreated(SurfaceHolder holder) {
-
-
-
-        showToast("IP = " + address);
+        canvas.drawBitmap(bitmap, 0, 0, null);
 
     }
 
-    @Override
-    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
 
-    }
-
-    @Override
-    public void surfaceDestroyed(SurfaceHolder holder) {
-        *//*if(!client.equals(null)) {
-            try {
-                client.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }*//*
-        showToast("connection CLOSED");
-        Intent mainIntent = new Intent(ClientActivity.this, MainActivity.class);
-        startActivity(mainIntent);
-    }
-*/
     @Override
     public boolean onTouch(View view, MotionEvent motionEvent) {
         JSONObject touchData = new JSONObject();
         try {
             switch (motionEvent.getAction()) {
                 case MotionEvent.ACTION_DOWN:
-                    touchData.put("type", KEY_FINGER_DOWN);
+                    touchData.put(KEY_EVENT_TYPE, KEY_FINGER_DOWN);
                     break;
                 case MotionEvent.ACTION_MOVE:
                     touchData.put(KEY_EVENT_TYPE, KEY_FINGER_MOVE);
@@ -309,13 +347,15 @@ public class ClientActivity extends Activity implements  View.OnTouchListener{ /
             touchData.put("x", motionEvent.getX() / deviceWidth);
             touchData.put("y", motionEvent.getY() / deviceHeight);
             Log.d(TAG, "Sending = " + touchData.toString());
+
             if (touchSocket != null) {
-                try (OutputStreamWriter out = new OutputStreamWriter(
-                        touchSocket.getOutputStream(), StandardCharsets.UTF_8)) {
-                    out.write(touchData.toString());
+                try {
+                    DataOutputStream DOS = new DataOutputStream(touchSocket.getOutputStream());
+                    DOS.writeUTF(touchData.toString());
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
+
             } else {
                 Log.e(TAG, "Can't send touch events. Socket is null.");
             }
@@ -326,6 +366,7 @@ public class ClientActivity extends Activity implements  View.OnTouchListener{ /
 
         return true;
     }
+
 
     private void hideSystemUI() {
         getWindow().getDecorView().setSystemUiVisibility(
@@ -345,47 +386,161 @@ public class ClientActivity extends Activity implements  View.OnTouchListener{ /
         });
     }
 
+
+    @Override
+    protected void onDestroy() {
+        running = false;
+        exitThread.start();
+        stopThread(t);
+        stopThread(connection);
+        stopThread(touchConnection);
+        stopThread(keyConnection);
+        stopThread(exitThread);
+        showToast("stopped all Threads");
+        super.onDestroy();
+
+    }
+
+/*    public boolean onKeyLongPress(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            Log.w(TAG, "LONG PRESS ");
+            if (keyCode == KeyEvent.KEYCODE_BACK ) {
+                *//*running = false;
+                //started = false;
+                try {
+                    client.close();
+                    ois.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                catch (NullPointerException e){
+                    e.printStackTrace();
+                }
+
+                stopThread(t);
+                stopThread(connection);
+                stopThread(touchConnection);
+                stopThread(keyConnection);
+                showToast("stopped all Threads");
+                this.finish();*//*
+                return false;
+            }
+        }
+        return super.onKeyLongPress(keyCode, event);
+    }*/
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        super.onKeyDown(keyCode, event);
+        if (keySocket != null) {
+            try {
+                DataOutputStream DOS = new DataOutputStream(keySocket.getOutputStream());
+                DOS.writeUTF(Integer.toString(keyCode));
+                System.out.println("Key Sended: " + keyCode);
+            } catch (IOException e) {
+                e.printStackTrace();
+
+
+            }
+        } else {
+            Log.e(TAG, "Can't send key events. Socket is null.");
+        }
+
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            // event.startTracking();
+            //onBackPressed();
+            return false;
+        }
+
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+            // event.startTracking();
+            //onBackPressed();
+            return false;
+        }
+        if (keyCode == KeyEvent.KEYCODE_HOME) {
+
+
+            return false;
+        }
+
+        return false;
+
+
+    }
+
+    boolean doubleMenuToPowerPressedOnce = false;
+
+
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+
+
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+
+            event.startTracking();
+            onBackPressed();
+            return false;
+        }
+
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+            // event.startTracking();
+            //onBackPressed();
+            return false;
+        }
+        if (keyCode == KeyEvent.KEYCODE_HOME) {
+
+            event.startTracking();
+
+            return false;
+        }
+
+        if (keyCode == KeyEvent.KEYCODE_MENU) {
+            if (doubleMenuToPowerPressedOnce) {
+
+                DataOutputStream DOS = null;
+                try {
+                    DOS = new DataOutputStream(keySocket.getOutputStream());
+                    DOS.writeUTF(Integer.toString(26));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                System.out.println("Key Sended: " + 26);
+            }
+
+            this.doubleMenuToPowerPressedOnce = true;
+            showToast("Please click MENU again to POWER");
+
+
+            new Handler().postDelayed(new Runnable() {
+
+                @Override
+                public void run() {
+                    doubleMenuToPowerPressedOnce = false;
+                }
+            }, 800);
+        }
+
+        return super.onKeyUp(keyCode, event);
+    }
+
     @Override
     protected void onPause() {
         super.onPause();
         pause();
     }
 
-    @Override
-    protected void onDestroy(){
-        super.onDestroy();
-        running = false;
-        stopThread(t);
-        stopThread(connection);
-        showToast("stopped all Threads");
-    }
-
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event)  {
-        if (keyCode == KeyEvent.KEYCODE_BACK ) {
-            running = false;
-            started = false;
-            try {
-                client.close();
-                ois.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            stopThread(t);
-            stopThread(connection);
-            showToast("stopped all Threads");
-            Intent i = new Intent(ClientActivity.this, MainActivity.class);
-            startActivity(i);
-            return true;
-        }
-
-        return super.onKeyDown(keyCode, event);
-    }
-
     private void pause() {
         //CLOSE LOCKER FOR run();
         locker = false;
+        //started = false;
+        running = false;
+        stopThread(t);
+        stopThread(connection);
+        stopThread(touchConnection);
+        stopThread(keyConnection);
+        showToast("stopped all Threads");
+        this.finish();
        /* while(true){
             try {
                 //WAIT UNTIL THREAD DIE, THEN EXIT WHILE LOOP AND RELEASE a thread
@@ -397,20 +552,92 @@ public class ClientActivity extends Activity implements  View.OnTouchListener{ /
         thread = null;*/
     }
 
+    boolean doubleBackToExitPressedOnce = false;
+
+    @Override
+    public void onBackPressed() {
+        if (doubleBackToExitPressedOnce) {
+            super.onBackPressed();
+            running = false;
+            //started = false;
+            try {
+                client.close();
+                ois.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (NullPointerException e) {
+                e.printStackTrace();
+            }
+
+            stopThread(t);
+            stopThread(connection);
+            stopThread(touchConnection);
+            stopThread(keyConnection);
+            showToast("stopped all Threads");
+            this.finish();
+            return;
+        }
+
+        this.doubleBackToExitPressedOnce = true;
+        showToast("Please click BACK again to exit");
+
+
+        new Handler().postDelayed(new Runnable() {
+
+            @Override
+            public void run() {
+                doubleBackToExitPressedOnce = false;
+            }
+        }, 800);
+    }
+
+
+    public void onMenuPressed() {
+        if (doubleBackToExitPressedOnce) {
+
+
+            return;
+        }
+
+        this.doubleMenuToPowerPressedOnce = true;
+        showToast("Please click MENU again to POWER");
+
+
+        new Handler().postDelayed(new Runnable() {
+
+            @Override
+            public void run() {
+                doubleMenuToPowerPressedOnce = false;
+            }
+        }, 800);
+    }
+
     @Override
     protected void onResume() {
+        //this.recreate();
+
+        /*started = true;
+        running = true;*/
         super.onResume();
         resume();
     }
 
     private void resume() {
         //RESTART THREAD AND OPEN LOCKER FOR run();
+
         locker = true;
+        /*running = true;
+        started = false;
+        connection.start();
+        touchConnection.start();
+        keyConnection.start();*/
+
 
     }
 
-    public synchronized void stopThread(Thread runner){
-        if(runner != null){
+
+    public synchronized void stopThread(Thread runner) {
+        if (runner != null) {
             runner.interrupt();
             runner = null;
         }

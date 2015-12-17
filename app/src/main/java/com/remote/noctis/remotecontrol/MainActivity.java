@@ -9,17 +9,24 @@ import android.app.DialogFragment;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Point;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.view.Display;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import org.w3c.dom.Text;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
@@ -35,21 +42,16 @@ import java.net.UnknownHostException;
 import eu.chainfire.libsuperuser.Shell;
 
 public class MainActivity extends Activity {
-    //client side
-    private Socket client;
-    private FileInputStream fileInputStream;
-    private BufferedInputStream bufferedInputStream;
-    private OutputStream outputStream;
+
     private Button startClient;
     private Button startServer;
     private TextView ip_address;
+    TextView requirement_hint;
+    TextView instruction_hint;
+    TextView keys_hint;
+    private boolean started = true;
+    String errMessage = "";
 
-    //server side
-    private static ServerSocket serverSocket;
-    private static Socket clientSocket;
-    private static InputStreamReader inputStreamReader;
-    private static BufferedReader bufferedReader;
-    private static String message;
 
     SharedPreferences prefs;
     private static final String KEY_SYSTEM_PRIVILEGE_PREF = "has_system_privilege";
@@ -73,18 +75,53 @@ public class MainActivity extends Activity {
         startClient = (Button) findViewById(R.id.button1);   //reference to start Client
         startServer = (Button) findViewById(R.id.button2);  //reference to start server
         ip_address = (TextView) findViewById(R.id.ip_address); //reference to ip address textview
+        requirement_hint = (TextView) findViewById(R.id.requirement);
+        instruction_hint = (TextView) findViewById(R.id.instruction);
+        keys_hint = (TextView) findViewById(R.id.keys_hint);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        Display display = getWindowManager().getDefaultDisplay();
+        Point size = new Point();
+        display.getSize(size);
+        int width = size.x;
+        int height = size.y;
+        params.setMargins(width / 10, height / 9, width / 10, 0);
+        requirement_hint.setLayoutParams(params);
+        instruction_hint.setLayoutParams(params);
+        keys_hint.setLayoutParams(params);
 
         prefs = PreferenceManager.getDefaultSharedPreferences(this);
         hasSystemPrivileges = prefs.getBoolean(KEY_SYSTEM_PRIVILEGE_PREF, false);
 
-        ip_address.setText("Adres IP tego urządzenia: "+Utils.getIPAddress(true));
+        if (Utils.getIPAddress(true).equals("")) {
+            ip_address.setText("Device is not connected to a Hot-Spot");
+        } else {
+            ip_address.setText("IP address of this device: " + Utils.getIPAddress(true));
+        }
+
+        if (Shell.SU.available() && Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+            requirement_hint.setText("Hint: Your device is rooted and can act as server");
+        }
+
+        if (getIntent() != null && getIntent().getAction() == "ERR") {
+
+            errMessage = getIntent().getStringExtra(AddressInputDialog.ERR_MSG);
+
+            if (!errMessage.equals(null) && errMessage != "") {
+                showToast(errMessage);
+            }
+
+            errMessage = getIntent().getStringExtra(PortInputDialog.ERR_MSG);
+            if (!errMessage.equals(null) && errMessage != "") {
+                showToast(errMessage);
+            }
+        }
+
 
         if (savedInstanceState == null) {
             new AsyncTask<Void, Void, Void>() {
                 @Override
                 protected Void doInBackground(Void... voids) {
                     final boolean isRooted = Shell.SU.available();
-                    //final boolean isRooted = true;
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
@@ -101,6 +138,7 @@ public class MainActivity extends Activity {
             }.execute();
         }
 
+
         //Button press event listener
         startClient.setOnClickListener(new View.OnClickListener() {
 
@@ -110,35 +148,8 @@ public class MainActivity extends Activity {
 
                     @Override
                     public void run() {
-                        // TODO Auto-generated method stub
 
                         new AddressInputDialog().show(getFragmentManager(), "Address Dialog");
-
-
-
-                       /* if (editText0.getText().toString().isEmpty()) {
-                            showToast("Proszę wpisać wiadomość");
-                        } else {
-                            try {
-
-
-                                if (editText1.getText().toString().isEmpty() || editText2.getText().toString().isEmpty()) {
-                                    showToast("Proszę wpisać adres IP i/lub Port");
-                                } else {
-
-                                    Socket client = new Socket("192.168.0.5", "8187");
-                                    DataOutputStream DOS = new DataOutputStream(client.getOutputStream());
-                                    DOS.writeUTF(editText0.getText().toString());
-                                    client.close();
-                                }
-                            } catch (UnknownHostException e) {
-                                e.printStackTrace();
-                            } catch (IOException e) {
-                                // TODO Auto-generated catch block
-                                e.printStackTrace();
-                            }
-                        }*/
-
 
                     }
                 }).start();
@@ -152,67 +163,33 @@ public class MainActivity extends Activity {
             public void onClick(View v) { //server button
 
 
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-                    new StartServerServiceDialog().show(getFragmentManager(), "Start service");
-                } else {
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP && Shell.SU.available()) {
                     new PortInputDialog().show(getFragmentManager(), "Address Dialog");
-                    //startScreenCapture();
-                }
-                /*if (editText2.getText().toString().isEmpty()) {
-                    showToast("prosze wpisac numer Portu");
+                    //new StartServerServiceDialog().show(getFragmentManager(), "Start service");
                 } else {
-                    Thread thread = new Thread() {
-                        @Override
-                        public void run() {
-                            try {
-                                serverSocket = new ServerSocket(Integer.parseInt(editText2.getText().toString())); // Server socket
-
-                            } catch (IOException e) {
-                                System.out.println("Could not listen on port: " + editText2.getText().toString());
-                            }
-
-                            System.out.println("Server started. Listening to the port " + editText2.getText().toString());
-
-                            while (true) {
-                                try {
-
-                                    clientSocket = serverSocket.accept(); // accept the client
-                                    // connection
-                                    inputStreamReader = new InputStreamReader(clientSocket.getInputStream());
-                                    bufferedReader = new BufferedReader(inputStreamReader); // get
-                                    // client
-                                    // msg
-                                    message = bufferedReader.readLine();
-
-                                    System.out.println(message);
-
-                                    showToast(message);
-
-                                    inputStreamReader.close();
-                                    clientSocket.close();
-
-                                } catch (IOException ex) {
-                                    System.out.println("Problem in message reading");
-                                }
-                            }
-
-                        }
-                    };
-
-                    thread.start();
-
-                }*/
+                    // new PortInputDialog().show(getFragmentManager(), "Address Dialog");
+                    showToast("Your device doesn't meet requirements to start the server");
+                }
             }
         });
 
     }
 
-    /*@TargetApi(Build.VERSION_CODES.LOLLIPOP)
-    private void startScreenCapture() {
-        startActivityForResult(
-                mMediaProjectionManager.createScreenCaptureIntent(),
-                REQUEST_MEDIA_PROJECTION);
-    }*/
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        // TODO Auto-generated method stub
+        if (Shell.SU.available() && Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+            requirement_hint.setText("Hint: Your device is rooted and can act as server");
+        }
+
+        if (Utils.getIPAddress(true).equals("")) {
+            ip_address.setText("Device is not connected to a Hot-Spot");
+        } else {
+            ip_address.setText("IP address of this device: " + Utils.getIPAddress(true));
+        }
+        return super.onTouchEvent(event);
+    }
+
 
     @SuppressLint("ValidFragment")
     private class StartServerServiceDialog extends DialogFragment {
@@ -228,7 +205,6 @@ public class MainActivity extends Activity {
                     Intent startServerIntent = new Intent(MainActivity.this, ServerService.class);
                     startServerIntent.setAction("START");
                     startService(startServerIntent);
-                    //finish();
                 }
             });
             builder.setNegativeButton("Install to /system", new DialogInterface.OnClickListener() {
@@ -296,7 +272,6 @@ public class MainActivity extends Activity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
         return true;
     }
@@ -315,35 +290,17 @@ public class MainActivity extends Activity {
     }
 
 
-    public class ExcuteNetworkOperation extends AsyncTask<Void, Void, String> {
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
 
-        @Override
-        protected void onPreExecute() {
-            // TODO Auto-generated method stub
-            /**
-             * show dialog
-             */
-            super.onPreExecute();
+
+            showToast("RemoteControl application closing");
+
+            this.finish();
+            return true;
         }
 
-        @Override
-        protected String doInBackground(Void... params) {
-            // TODO Auto-generated method stub
-            /**
-             * Do network related stuff
-             * return string response.
-             */
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(String result) {
-            // TODO Auto-generated method stub
-            /**
-             * update ui thread and remove dialog
-             */
-            super.onPostExecute(result);
-        }
+        return super.onKeyDown(keyCode, event);
     }
 
 

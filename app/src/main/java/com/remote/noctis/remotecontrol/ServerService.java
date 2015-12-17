@@ -30,6 +30,8 @@ public class ServerService extends Service {
 
     SharedPreferences preferences;
 
+    public static final String KEY_LAST_PORT_PREF = "last_port";
+
     Handler mHandler;
 
     ServerSocket server;
@@ -58,32 +60,20 @@ public class ServerService extends Service {
             return START_NOT_STICKY;
         }
         if (server == null && intent.getAction().equals("START")) {
+            final SharedPreferences prefs = this.getSharedPreferences("com.remote.noctis.remotecontrol", Context.MODE_PRIVATE);
             preferences = PreferenceManager.getDefaultSharedPreferences(this);
-            setServerPort(Integer.parseInt(preferences.getString(PortInputDialog.KEY_PORT_EXTRA, "8187")));
+            setServerPort(Integer.parseInt(prefs.getString(KEY_LAST_PORT_PREF, "8187")));
             DisplayMetrics dm = new DisplayMetrics();
             Display mDisplay = ((WindowManager) getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
             mDisplay.getMetrics(dm);
             deviceWidth = dm.widthPixels;
             deviceHeight = dm.heightPixels;
-            /*try {
-                server = new ServerSocket(ServerService.getServerPort());
-            } catch (IOException e) {
-                e.printStackTrace();
-            }*/
 
             startServerTask = new StartServerTask();
             startServerTask.execute();
-            //new StartServerTask().execute();
             updateNotification("Stream live at");
             Toast.makeText(this, "The new Service Started", Toast.LENGTH_LONG).show();
-           /* new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    showToast("Starting main touch server");
-                    new MainStarter(ServerService.this).start();
-                    showToast("started main touch server");
-                }
-            }).start();*/
+
 
             mHandler = new Handler();
         }

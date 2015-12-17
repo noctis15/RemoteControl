@@ -1,15 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:tools="http://schemas.android.com/tools"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item
-        android:id="@+id/atn_direct_enable"
-        android:icon="@mipmap/ic_action_on_off"
-        android:orderInCategory="100"
-        android:title="Settings"
-        app:showAsAction="ifRoom|withText" />
-    <item android:id="@+id/action_install"
+        android:id="@+id/action_install"
         android:title="Install to /system"
         android:orderInCategory="100"
         android:showAsAction="never"

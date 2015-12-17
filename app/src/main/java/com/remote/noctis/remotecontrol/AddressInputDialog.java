@@ -11,6 +11,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.Toast;
 
 /**
  * Created by Noctis on 2015-11-13.
@@ -21,6 +22,7 @@ public class AddressInputDialog extends DialogFragment {
     public static final String KEY_LAST_ADDRESS_PREF = "last_address";
     public static final String KEY_PORT_EXTRA = "port";
     public static final String KEY_LAST_PORT_PREF = "last_port";
+    public static final String ERR_MSG = "errMessage";
 
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
@@ -28,7 +30,7 @@ public class AddressInputDialog extends DialogFragment {
         // Get the layout inflater
         LayoutInflater inflater = getActivity().getLayoutInflater();
 
-        final SharedPreferences prefs = getActivity().getSharedPreferences("MAIN_PREFS", Context.MODE_PRIVATE);
+        final SharedPreferences prefs = getActivity().getSharedPreferences("com.remote.noctis.remotecontrol", Context.MODE_PRIVATE);
         String lastAddress = prefs.getString(KEY_LAST_ADDRESS_PREF, "");
         String lastPort = prefs.getString(KEY_LAST_PORT_PREF, "");
 
@@ -49,7 +51,7 @@ public class AddressInputDialog extends DialogFragment {
 
                         String address = addressInput.getText().toString();
                         String port = portInput.getText().toString();
-                        if (!address.equals("") && !port.equals("")) {
+                        if (!address.equals("") && !port.equals("")&& port.length()==4) {
                             Intent startIntent = new Intent(getActivity(), ClientActivity.class);
                             startIntent.putExtra(KEY_ADDRESS_EXTRA, address);
                             startIntent.putExtra(KEY_PORT_EXTRA, port);
@@ -58,6 +60,12 @@ public class AddressInputDialog extends DialogFragment {
                             editor.putString(KEY_LAST_PORT_PREF, port);
                             editor.commit();
                             startActivity(startIntent);
+                        }
+                        else{
+                            Intent errorIntent = new Intent(getActivity(), MainActivity.class);
+                            errorIntent.putExtra(ERR_MSG,"Please fill address and port fields correctly");
+                            errorIntent.setAction("ERR");
+                            startActivity(errorIntent);
                         }
                     }
                 })
@@ -68,4 +76,5 @@ public class AddressInputDialog extends DialogFragment {
                 });
         return builder.create();
     }
+
 }
