@@ -149,8 +149,11 @@ public class MainActivity extends Activity {
                     @Override
                     public void run() {
 
-                        new AddressInputDialog().show(getFragmentManager(), "Address Dialog");
-
+                        if (Utils.getIPAddress(true).equals("")) {
+                            showToast("Connect to a Hot-Spot first");
+                        } else {
+                            new AddressInputDialog().show(getFragmentManager(), "Address Dialog");
+                        }
                     }
                 }).start();
 
@@ -163,12 +166,16 @@ public class MainActivity extends Activity {
             public void onClick(View v) { //server button
 
 
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP && Shell.SU.available()) {
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP && Shell.SU.available() && !Utils.getIPAddress(true).equals("")) {
                     new PortInputDialog().show(getFragmentManager(), "Address Dialog");
                     //new StartServerServiceDialog().show(getFragmentManager(), "Start service");
                 } else {
-                    // new PortInputDialog().show(getFragmentManager(), "Address Dialog");
-                    showToast("Your device doesn't meet requirements to start the server");
+                    if (Utils.getIPAddress(true).equals("")) {
+                        showToast("Connect to a Hot-Spot first");
+                    } else {
+                        // new PortInputDialog().show(getFragmentManager(), "Address Dialog");
+                        showToast("Your device doesn't meet requirements to start the server");
+                    }
                 }
             }
         });

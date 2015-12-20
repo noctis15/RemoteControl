@@ -1,5 +1,7 @@
 package com.remote.noctis.remotecontrol;
 
+import android.app.Activity;
+import android.app.ActivityManager;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
@@ -12,6 +14,7 @@ import android.os.IBinder;
 import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.Display;
 import android.view.WindowManager;
 import android.widget.Toast;
@@ -19,6 +22,7 @@ import android.widget.Toast;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.List;
 
 /**
  * Created by Noctis on 2015-11-13.
@@ -29,6 +33,8 @@ public class ServerService extends Service {
     private static int serverPort;
 
     SharedPreferences preferences;
+
+    private static String nameOfProcess = "com.remote.noctis.remotecontrol";
 
     public static final String KEY_LAST_PORT_PREF = "last_port";
 
@@ -113,6 +119,21 @@ public class ServerService extends Service {
 
 
     private void dispose() {
+        ActivityManager am = (ActivityManager) getSystemService(Activity.ACTIVITY_SERVICE);
+        am.killBackgroundProcesses(nameOfProcess);
+
+        List<ActivityManager.RunningAppProcessInfo> listOfProcesses = am.getRunningAppProcesses();
+
+        for (ActivityManager.RunningAppProcessInfo process : listOfProcesses) {
+            if (process.processName.contains(nameOfProcess)) {
+                Log.e("Proccess", process.processName + " : " + process.pid);
+                android.os.Process.killProcess(process.pid);
+                android.os.Process.sendSignal(process.pid, android.os.Process.SIGNAL_KILL);
+                //am.killBackgroundProcesses(process.processName);
+                break;
+            }
+        }
+
         stopForeground(true);
         stopSelf();
         System.out.println("DONE DISPOSING SERVICE");
@@ -125,6 +146,6 @@ public class ServerService extends Service {
     }
 
     public void setServerPort(int serverPort) {
-        this.serverPort = serverPort;
+        ServerService.serverPort = serverPort;
     }
 }

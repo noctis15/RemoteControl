@@ -98,6 +98,8 @@ public class ClientActivity extends Activity implements View.OnTouchListener {
         running = true;
         started = false;
 
+        final int timeout = 500;
+
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         getWindowManager().getDefaultDisplay().getMetrics(dm);
         deviceWidth = dm.widthPixels;
@@ -108,10 +110,10 @@ public class ClientActivity extends Activity implements View.OnTouchListener {
             public void run() {
                 try {
                     if (!InetAddress.getByName(address).isReachable(2000)) {
-                        Intent startIntent = new Intent(ClientActivity.this, MainActivity.class);
+                        /*Intent startIntent = new Intent(ClientActivity.this, MainActivity.class);
 
-                        startActivity(startIntent);
-                        //finish();
+                        startActivity(startIntent);*/
+                        finish();
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -125,15 +127,17 @@ public class ClientActivity extends Activity implements View.OnTouchListener {
             public void run() {
                 try {
                     client = new Socket(address, Integer.parseInt(port));
+                    //client.setSoTimeout(timeout);
                     client.getOutputStream();
                     ois = new ObjectInputStream(client.getInputStream());
 
 
                     while (running) {
                         if (!InetAddress.getByName(address).isReachable(2000)) {
-                            Intent startIntent = new Intent(ClientActivity.this, MainActivity.class);
+                            /*Intent startIntent = new Intent(ClientActivity.this, MainActivity.class);
 
-                            startActivity(startIntent);
+                            startActivity(startIntent);*/
+                            finish();
                         }
                         ByteArrayOutputStream out = new ByteArrayOutputStream();
                         int size = ois.readInt();
@@ -182,7 +186,7 @@ public class ClientActivity extends Activity implements View.OnTouchListener {
                             t.start();
                             started = true;
                         }
-                        //t.join(100);
+                        //t.join(200);
 
 
                     }
@@ -209,12 +213,13 @@ public class ClientActivity extends Activity implements View.OnTouchListener {
             public void run() {
                 try {
                     touchSocket = new Socket(address, Integer.parseInt(port) + 1);
+                    //touchSocket.setSoTimeout(timeout);
                 } catch (ConnectException e) {
-                    showToast("Could't connect with touch server");
+                    //showToast("Could't connect with touch server");
                     finish();
                     e.printStackTrace();
                 } catch (EOFException e) {
-                    showToast("Touch Server has disconnected");
+                    //showToast("Touch Server has disconnected");
                     finish();
                     e.printStackTrace();
                 } catch (IOException e) {
@@ -241,12 +246,13 @@ public class ClientActivity extends Activity implements View.OnTouchListener {
             public void run() {
                 try {
                     keySocket = new Socket(address, Integer.parseInt(port) + 2);
+                    //keySocket.setSoTimeout(timeout);
                 } catch (ConnectException e) {
-                    showToast("Could't connect with key server");
+                    //showToast("Could't connect with key server");
                     finish();
                     e.printStackTrace();
                 } catch (EOFException e) {
-                    showToast("Key Server has disconnected");
+                    //showToast("Key Server has disconnected");
                     finish();
                     e.printStackTrace();
                 } catch (IOException e) {
@@ -294,6 +300,8 @@ public class ClientActivity extends Activity implements View.OnTouchListener {
                     }
                 } else {
                     Log.e(TAG, "Can't send ExitCode. Socket is null.");
+                    //showToast("Couldn't connect with server");
+                    finish();
                 }
             }
         });
@@ -396,7 +404,7 @@ public class ClientActivity extends Activity implements View.OnTouchListener {
         stopThread(touchConnection);
         stopThread(keyConnection);
         stopThread(exitThread);
-        showToast("stopped all Threads");
+        //showToast("stopped all Threads");
         super.onDestroy();
 
     }
@@ -539,7 +547,7 @@ public class ClientActivity extends Activity implements View.OnTouchListener {
         stopThread(connection);
         stopThread(touchConnection);
         stopThread(keyConnection);
-        showToast("stopped all Threads");
+        //showToast("stopped all Threads");
         this.finish();
        /* while(true){
             try {
@@ -573,7 +581,7 @@ public class ClientActivity extends Activity implements View.OnTouchListener {
             stopThread(connection);
             stopThread(touchConnection);
             stopThread(keyConnection);
-            showToast("stopped all Threads");
+            //showToast("stopped all Threads");
             this.finish();
             return;
         }
